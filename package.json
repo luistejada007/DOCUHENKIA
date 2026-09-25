@@ -1,0 +1,19 @@
+{
+  "name": "docugreen-professional",
+  "version": "2.0.0",
+  "description": "Gestor profesional de documentos con Node.js, Express y almacenamiento local",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node --use-system-ca backend/server.js",
+    "dev": "node --use-system-ca --watch backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^11.0.3"
+  }
+}

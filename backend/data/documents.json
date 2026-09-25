@@ -1,0 +1,29 @@
+[
+  {
+    "id": "99ac4689-aede-4dae-8db2-1b64ecb08c52",
+    "name": "Caso_Mosaico_Simple (1).pdf",
+    "storedName": "29448dfc-3a70-4cba-aef8-f110aa09b199.pdf",
+    "mimeType": "application/pdf",
+    "size": 853611,
+    "folderId": "d292e1c7-d396-48c8-9961-409b5737ee41",
+    "createdAt": "2026-09-24T01:44:24.968Z"
+  },
+  {
+    "id": "030bf0fb-7fe4-4090-9628-0d946b806648",
+    "name": "ReporteDeHorasSeptiembrede2026-Equipo.csv",
+    "storedName": "56c24104-4a1d-43a1-9175-facbd979dbe3.csv",
+    "mimeType": "text/csv",
+    "size": 18669,
+    "folderId": null,
+    "createdAt": "2026-09-24T16:28:51.020Z"
+  },
+  {
+    "id": "75c4b582-be44-45cb-8374-87ef82d21d98",
+    "name": "configuracion_OTP 1.pdf",
+    "storedName": "16015dfd-c395-4efd-908c-d115fc576a09.pdf",
+    "mimeType": "application/pdf",
+    "size": 429196,
+    "folderId": "e10f5805-2178-4477-89e6-399bdbf38416",
+    "createdAt": "2026-09-24T16:51:18.737Z"
+  }
+]

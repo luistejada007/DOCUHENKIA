@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "name": "Andrea López",
+    "email": "andrea@docuhenkia.com",
+    "role": "Administrador",
+    "team": "Dirección",
+    "area": "Dirección",
+    "phone": "+57 300 123 4567",
+    "status": "Activo"
+  },
+  {
+    "id": 2,
+    "name": "Mateo Ruiz",
+    "email": "mateo@docuhenkia.com",
+    "role": "Administrador",
+    "team": "Operaciones",
+    "area": "Operaciones",
+    "phone": "+57 301 987 6543",
+    "status": "Activo"
+  },
+  {
+    "id": 3,
+    "name": "Sofía García",
+    "email": "sofia@docuhenkia.com",
+    "role": "Revisor",
+    "team": "Calidad",
+    "area": "Calidad",
+    "phone": "+57 302 555 1122",
+    "status": "Pendiente"
+  },
+  {
+    "id": 4,
+    "name": "Daniel Torres",
+    "email": "daniel@docuhenkia.com",
+    "role": "Visualizador",
+    "team": "Soporte",
+    "area": "Soporte",
+    "phone": "+57 304 777 8899",
+    "status": "Activo"
+  },
+  {
+    "id": 5,
+    "name": "Administrador",
+    "email": "admin@docuhenkia.com",
+    "role": "Administrador",
+    "team": "Dirección",
+    "area": "Dirección",
+    "phone": "+57 310 000 0000",
+    "status": "Activo"
+  }
+]
