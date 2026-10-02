@@ -1,4 +1,6 @@
-export default function Topbar({ userName, search, onSearchChange, onLogout }) {
+import UserAvatar from './UserAvatar';
+
+export default function Topbar({ user, userName, search, onSearchChange, onLogout }) {
   return (
     <header className="topbar">
       <div className="search-box">
@@ -10,8 +12,8 @@ export default function Topbar({ userName, search, onSearchChange, onLogout }) {
         />
       </div>
       <div className="user">
-        <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
-        <span>{userName}</span>
+        <UserAvatar user={user} />
+        <span className="topbar-user-name">{userName}</span>
         <button className="logout-button" type="button" onClick={onLogout}>Salir</button>
       </div>
     </header>

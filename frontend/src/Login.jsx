@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AnimatedLoginBackground from './components/AnimatedLoginBackground';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const initialSignIn = { email: '', password: '' };
 const initialSignUp = { name: '', email: '', password: '' };
@@ -174,6 +175,12 @@ export default function Login({ onAuthenticated }) {
         </div>
       </section>
       {error && <p className="login-error" role="alert">{error}</p>}
+      {isLoading && (
+        <LoadingOverlay
+          message="Validando tu acceso"
+          detail="Conectando con DOCUHENKIA..."
+        />
+      )}
     </main>
   );
 }

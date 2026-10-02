@@ -3,6 +3,7 @@ const path = require("path");
 const database = require("../database");
 
 const usersPath = path.join(__dirname, "..", "data", "users.json");
+const uploadsDir = path.join(__dirname, "..", "uploads");
 
 function readUsers() {
   try {
@@ -21,6 +22,7 @@ function nextUserId(users) {
 }
 
 function normalizeUser(user) {
+  const avatarPath = user.avatar_path || user.avatarPath || null;
   return {
     id: Number(user.id),
     name: String(user.name || "Usuario").trim(),
@@ -30,8 +32,19 @@ function normalizeUser(user) {
     area: String(user.area || "Sin área").trim(),
     phone: String(user.phone || "").trim(),
     status: String(user.status || "Activo").trim(),
+    avatarUrl: avatarPath ? `/api/users/${Number(user.id)}/avatar?v=${encodeURIComponent(avatarPath)}` : null,
     lastLoginAt: user.last_login_at || user.lastLoginAt || null,
   };
+}
+
+function removeAvatarFile(avatarPath) {
+  if (!avatarPath) return;
+  const filePath = path.join(uploadsDir, path.basename(avatarPath));
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (error) {
+    console.error("No se pudo eliminar la foto de perfil anterior:", error.message);
+  }
 }
 
 function userFromRow(row) {
@@ -147,6 +160,66 @@ exports.getById = async (req, res, next) => {
   res.json(normalizeUser(user));
 };
 
+exports.getAvatar = async (req, res, next) => {
+  const id = Number(req.params.id);
+  try {
+    let avatarPath;
+    if (database.isConfigured) {
+      const { rows } = await database.pool.query("SELECT avatar_path FROM users WHERE id = $1", [id]);
+      avatarPath = rows[0]?.avatar_path;
+    } else {
+      avatarPath = readUsers().find((user) => Number(user.id) === id)?.avatarPath;
+    }
+
+    if (!avatarPath) return res.status(404).json({ error: "El usuario no tiene foto de perfil" });
+    const filePath = path.join(uploadsDir, path.basename(avatarPath));
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "La foto de perfil no está disponible" });
+    res.set("Cache-Control", "private, max-age=3600");
+    return res.sendFile(filePath);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.updateAvatar = async (req, res, next) => {
+  if (!req.file) return res.status(400).json({ error: "Selecciona una imagen para continuar" });
+
+  const id = Number(req.params.id);
+  try {
+    if (database.isConfigured) {
+      const { rows: existingRows } = await database.pool.query(
+        "SELECT avatar_path FROM users WHERE id = $1", [id]
+      );
+      if (!existingRows.length) {
+        removeAvatarFile(req.file.filename);
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      const previousAvatarPath = existingRows[0].avatar_path;
+      const { rows } = await database.pool.query(
+        "UPDATE users SET avatar_path = $2 WHERE id = $1 RETURNING *",
+        [id, req.file.filename]
+      );
+      removeAvatarFile(previousAvatarPath);
+      return res.json(userFromRow(rows[0]));
+    }
+
+    const users = readUsers();
+    const index = users.findIndex((user) => Number(user.id) === id);
+    if (index === -1) {
+      removeAvatarFile(req.file.filename);
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    const previousAvatarPath = users[index].avatarPath;
+    users[index].avatarPath = req.file.filename;
+    writeUsers(users);
+    removeAvatarFile(previousAvatarPath);
+    return res.json(normalizeUser(users[index]));
+  } catch (error) {
+    removeAvatarFile(req.file.filename);
+    return next(error);
+  }
+};
+
 exports.update = async (req, res, next) => {
   const id = Number(req.params.id);
   if (req.body?.name !== undefined && !String(req.body.name).trim()) {
@@ -207,8 +280,7 @@ exports.update = async (req, res, next) => {
       }
     : req.body;
   const nextUser = normalizeUser({ ...current, ...profileChanges, id });
-
-  users[index] = nextUser;
+  users[index] = { ...nextUser, avatarPath: current.avatarPath || null };
   writeUsers(users);
   res.json(nextUser);
 };

@@ -112,7 +112,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
   const loadTrash = async () => {
     setIsTrashLoading(true);
     try {
-      const response = await fetch(TRASH_API);
+      const response = await fetch(TRASH_API, { cache: 'no-store' });
       const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || 'No se pudo cargar la papelera');
       setTrashItems(data);
@@ -187,6 +187,28 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
         setProfile((current) => ({ ...current, ...data }));
         onUserUpdate(data.name && data.name.trim() ? data.name : userName);
       }
+      return data;
+    } catch (error) {
+      showToast(error.message);
+      return null;
+    }
+  };
+
+  const uploadProfileAvatar = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const response = await fetch(`${USERS_API}/${profile.id}/avatar`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.error || 'No se pudo actualizar la foto');
+      setMembers((current) => current.map((member) =>
+        Number(member.id) === Number(data.id) ? data : member
+      ));
+      setProfile((current) => ({ ...current, ...data }));
+      showToast('Foto de perfil actualizada');
       return data;
     } catch (error) {
       showToast(error.message);
@@ -541,6 +563,36 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
     }
   };
 
+  const removeDocuments = async (ids) => {
+    const selectedDocuments = [...new Set(ids)]
+      .map((id) => documents.find((document) => document.id === id))
+      .filter(Boolean);
+    if (!selectedDocuments.length) return false;
+    if (!window.confirm(`¿Mover ${selectedDocuments.length} documento(s) a la papelera?`)) return false;
+
+    let removedCount = 0;
+    let firstError = '';
+    for (const document of selectedDocuments) {
+      try {
+        const response = await fetch(`${API}/${document.id}`, { method: 'DELETE' });
+        const data = await readResponse(response);
+        if (!response.ok) throw new Error(data.error || `No se pudo mover ${document.name}`);
+        removedCount += 1;
+      } catch (error) {
+        firstError ||= error.message;
+      }
+    }
+
+    if (removedCount > 0) {
+      if (selectedId && selectedDocuments.some((document) => document.id === selectedId)) closePreview();
+      await Promise.all([loadDocuments(), loadFolders()]);
+    }
+    showToast(firstError
+      ? `${removedCount} documento(s) movido(s); ${firstError}`
+      : `${removedCount} documento(s) movido(s) a la papelera`);
+    return removedCount > 0;
+  };
+
   const restoreTrashItem = async (item) => {
     try {
       const response = await fetch(`${TRASH_API}/restore`, {
@@ -557,6 +609,44 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
     }
   };
 
+  const deleteTrashItem = async (item) => {
+    const contentName = item.itemType === 'folder' ? `la carpeta "${item.name}" y su contenido` : `"${item.name}"`;
+    if (!window.confirm(`¿Eliminar definitivamente ${contentName} de la papelera? Esta acción no se puede deshacer.`)) return;
+
+    try {
+      const response = await fetch(`${TRASH_API}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.error || 'No se pudo eliminar el elemento');
+      await Promise.all([loadTrash(), loadDocuments(), loadFolders()]);
+      showToast('Elemento eliminado definitivamente de la papelera');
+    } catch (error) {
+      showToast(error.message);
+    }
+  };
+
+  const deleteTrashItems = async (selectedItems) => {
+    if (!selectedItems.length) return;
+    if (!window.confirm(`¿Eliminar definitivamente ${selectedItems.length} documento(s) seleccionados? Esta acción no se puede deshacer.`)) return;
+
+    let deletedCount = 0;
+    let firstError = '';
+    for (const item of selectedItems) {
+      try {
+        const response = await fetch(`${TRASH_API}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+        const data = await readResponse(response);
+        if (!response.ok) throw new Error(data.error || `No se pudo eliminar ${item.name}`);
+        deletedCount += 1;
+      } catch (error) {
+        firstError ||= error.message;
+      }
+    }
+
+    await Promise.all([loadTrash(), loadDocuments(), loadFolders()]);
+    showToast(firstError
+      ? `${deletedCount} documento(s) eliminado(s); ${firstError}`
+      : `${deletedCount} documento(s) eliminados definitivamente`);
+  };
+
   const emptyTrash = async () => {
     if (!window.confirm(isAdmin
       ? '¿Vaciar la papelera para todos? Los archivos globales eliminados se borrarán permanentemente.'
@@ -566,8 +656,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
       const response = await fetch(TRASH_API, { method: 'DELETE' });
       const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || 'No se pudo vaciar la papelera');
-      setTrashItems([]);
-      await Promise.all([loadDocuments(), loadFolders()]);
+      await Promise.all([loadTrash(), loadDocuments(), loadFolders()]);
       showToast(`Papelera vaciada (${data.deletedCount} elemento(s))`);
     } catch (error) {
       showToast(error.message);
@@ -595,6 +684,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
         <ProfileView
           userName={userName}
           profile={profile}
+          onAvatarUpload={uploadProfileAvatar}
           onUserUpdate={(name) => {
             const nextProfile = { ...profile, name };
             setProfile(nextProfile);
@@ -615,6 +705,8 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
           isLoading={isTrashLoading}
           onRefresh={loadTrash}
           onRestore={restoreTrashItem}
+          onDelete={deleteTrashItem}
+          onDeleteMany={deleteTrashItems}
           onEmpty={emptyTrash}
         />
       );
@@ -635,6 +727,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
         onPreviewDocument={previewDocument}
         onDownload={download}
         onRemoveDocument={removeDocument}
+        onRemoveDocuments={removeDocuments}
         preview={preview}
         selectedDocument={selectedDocument}
         isFullPreview={isFullPreview}
@@ -667,7 +760,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
         />
 
         <main>
-          <Topbar userName={userName} search={search} onSearchChange={setSearch} onLogout={onLogout} />
+          <Topbar user={profile} userName={userName} search={search} onSearchChange={setSearch} onLogout={onLogout} />
 
           {renderMainContent()}
         </main>

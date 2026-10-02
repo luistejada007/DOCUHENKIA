@@ -4,8 +4,8 @@ const database = require("../database");
 const trashStore = require("../trashStore");
 
 const uploadsDir = path.join(__dirname, "..", "uploads");
-const foldersPath = path.join(__dirname, "data", "folders.json");
-const documentsPath = path.join(__dirname, "data", "documents.json");
+const foldersPath = path.join(__dirname, "..", "data", "folders.json");
+const documentsPath = path.join(__dirname, "..", "data", "documents.json");
 
 function readJSON(filePath) {
   try {
@@ -57,8 +57,104 @@ function removeStoredFiles(storedNames) {
   for (const storedName of storedNames) {
     if (!storedName) continue;
     const filePath = path.join(uploadsDir, path.basename(storedName));
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (error) {
+      console.error("No se pudo eliminar el archivo de la papelera:", error.message);
+    }
   }
+}
+
+function isPrivateOwnedItem(item) {
+  const payload = item.payload || {};
+  const ownerId = item.ownerId ?? item.owner_user_id ?? payload.ownerId ?? payload.owner_user_id;
+  const deletedById = item.deletedById ?? item.deleted_by_user_id;
+  const isShared = payload.isShared ?? payload.is_shared;
+  return item.audience === "personal"
+    && ownerId != null
+    && Number(ownerId) === Number(deletedById)
+    && (isShared === false || isShared === "false");
+}
+
+async function purgePrivateDatabaseContent(client, items) {
+  const storedNames = [];
+  const privateFolders = items.filter(item =>
+    (item.itemType ?? item.item_type) === "folder" && isPrivateOwnedItem(item)
+  );
+
+  for (const item of privateFolders) {
+    const ownerId = item.ownerId ?? item.owner_user_id ?? item.payload?.ownerId ?? item.payload?.owner_user_id;
+    const { rows: documents } = await client.query(
+      `DELETE FROM documents
+       WHERE folder_id = $1 AND owner_user_id = $2 AND is_shared = FALSE
+       RETURNING id, stored_name`,
+      [item.itemId ?? item.item_id, ownerId]
+    );
+    storedNames.push(...documents.map(document => document.stored_name));
+    if (documents.length) {
+      await client.query(
+        "DELETE FROM hidden_documents WHERE document_id = ANY($1::text[])",
+        [documents.map(document => document.id)]
+      );
+    }
+    await client.query(
+      "UPDATE documents SET folder_id = NULL WHERE folder_id = $1",
+      [item.itemId ?? item.item_id]
+    );
+    await client.query(
+      "DELETE FROM folders WHERE id = $1 AND owner_user_id = $2 AND is_shared = FALSE",
+      [item.itemId ?? item.item_id, ownerId]
+    );
+  }
+
+  const privateDocuments = items.filter(item =>
+    (item.itemType ?? item.item_type) === "document" && isPrivateOwnedItem(item)
+  );
+  for (const item of privateDocuments) {
+    const ownerId = item.ownerId ?? item.owner_user_id ?? item.payload?.ownerId ?? item.payload?.owner_user_id;
+    const { rows } = await client.query(
+      `DELETE FROM documents
+       WHERE id = $1 AND owner_user_id = $2 AND is_shared = FALSE
+       RETURNING id, stored_name`,
+      [item.itemId ?? item.item_id, ownerId]
+    );
+    storedNames.push(...rows.map(document => document.stored_name));
+    if (rows.length) {
+      await client.query("DELETE FROM hidden_documents WHERE document_id = $1", [rows[0].id]);
+    }
+  }
+
+  return storedNames;
+}
+
+function purgePrivateJSONContent(items) {
+  const folders = readJSON(foldersPath);
+  const documents = readJSON(documentsPath);
+  const privateFolders = items.filter(item => item.itemType === "folder" && isPrivateOwnedItem(item));
+  const privateFolderIds = new Set(privateFolders.map(item => item.itemId));
+  const privateFolderOwners = new Map(privateFolders.map(item => [item.itemId, Number(
+    item.ownerId ?? item.payload?.ownerId
+  )]));
+  const privateDocumentIds = new Set(items
+    .filter(item => item.itemType === "document" && isPrivateOwnedItem(item))
+    .map(item => item.itemId));
+
+  for (const document of documents) {
+    const folderOwner = privateFolderOwners.get(document.folderId);
+    if (folderOwner != null
+      && Number(document.ownerId) === folderOwner
+      && document.isShared === false) {
+      privateDocumentIds.add(document.id);
+    }
+  }
+
+  const removedDocuments = documents.filter(document => privateDocumentIds.has(document.id));
+  const storedNames = removedDocuments.map(document => document.storedName || document.stored_name);
+  writeJSON(documentsPath, documents
+    .filter(document => !privateDocumentIds.has(document.id))
+    .map(document => privateFolderIds.has(document.folderId) ? { ...document, folderId: null } : document));
+  writeJSON(foldersPath, folders.filter(folder => !privateFolderIds.has(folder.id)));
+  return storedNames;
 }
 
 async function restoreDatabasePayload(client, item) {
@@ -81,6 +177,7 @@ async function restoreDatabasePayload(client, item) {
 }
 
 exports.list = async (req, res, next) => {
+  res.set("Cache-Control", "no-store");
   if (database.isConfigured) {
     try {
       const query = isAdmin(req)
@@ -212,12 +309,74 @@ exports.restore = async (req, res, next) => {
   res.json({ message: "Elemento restaurado", restoredCount: itemsToRestore.length });
 };
 
+exports.destroy = async (req, res, next) => {
+  if (database.isConfigured) {
+    let client;
+    let transactionStarted = false;
+    let itemsToDelete = [];
+    let privateStoredNames = [];
+    try {
+      client = await database.pool.connect();
+      await client.query("BEGIN");
+      transactionStarted = true;
+      const { rows: selectedRows } = await client.query(
+        "SELECT * FROM trash_items WHERE id = $1 FOR UPDATE",
+        [req.params.id]
+      );
+      const selected = selectedRows[0];
+      if (!selected || !canAccessTrashItem(selected, req)) {
+        return res.status(404).json({ error: "Elemento de papelera no encontrado" });
+      }
+
+      const { rows: batch } = await client.query(
+        `SELECT * FROM trash_items WHERE batch_id = $1
+         AND ($2 = TRUE OR (audience = 'personal' AND deleted_by_user_id = $3))
+         FOR UPDATE`,
+        [selected.batch_id, isAdmin(req), Number(req.sessionUser.id)]
+      );
+      const deletesBatch = selected.item_type === "folder";
+      itemsToDelete = deletesBatch ? batch : [selected];
+      privateStoredNames = await purgePrivateDatabaseContent(client, itemsToDelete);
+      const ids = itemsToDelete.map(item => item.id);
+      await client.query("DELETE FROM trash_items WHERE id = ANY($1::text[])", [ids]);
+      await client.query("COMMIT");
+      transactionStarted = false;
+      removeStoredFiles([...privateStoredNames, ...itemsToDelete
+        .filter(item => item.audience === "global" && item.item_type === "document")
+        .map(item => storedNameFromPayload(item.payload))]);
+      return res.json({ message: "Elemento eliminado definitivamente", deletedCount: itemsToDelete.length });
+    } catch (error) {
+      return next(error);
+    } finally {
+      if (client) {
+        if (transactionStarted) await client.query("ROLLBACK").catch(() => {});
+        client.release();
+      }
+    }
+  }
+
+  const trash = trashStore.readTrash();
+  const selected = trash.find(item => item.id === req.params.id && canAccessTrashItem(item, req));
+  if (!selected) return res.status(404).json({ error: "Elemento de papelera no encontrado" });
+  const batch = trash.filter(item => item.batchId === selected.batchId && canAccessTrashItem(item, req));
+  const deletesBatch = selected.itemType === "folder";
+  const itemsToDelete = deletesBatch ? batch : [selected];
+  const privateStoredNames = purgePrivateJSONContent(itemsToDelete);
+  removeStoredFiles([...privateStoredNames, ...itemsToDelete
+    .filter(item => item.audience === "global" && item.itemType === "document")
+    .map(item => storedNameFromPayload(item.payload))]);
+  const deletedIds = new Set(itemsToDelete.map(item => item.id));
+  trashStore.writeTrash(trash.filter(item => !deletedIds.has(item.id)));
+  return res.json({ message: "Elemento eliminado definitivamente", deletedCount: itemsToDelete.length });
+};
+
 exports.empty = async (req, res, next) => {
   const userId = Number(req.sessionUser.id);
   if (database.isConfigured) {
     try {
       const client = await database.pool.connect();
       let items;
+      let privateStoredNames = [];
       try {
         await client.query("BEGIN");
         const query = isAdmin(req)
@@ -225,6 +384,7 @@ exports.empty = async (req, res, next) => {
           : "SELECT * FROM trash_items WHERE audience = 'personal' AND deleted_by_user_id = $1 FOR UPDATE";
         const values = isAdmin(req) ? [] : [userId];
         items = (await client.query(query, values)).rows;
+        privateStoredNames = await purgePrivateDatabaseContent(client, items);
         const ids = items.map(item => item.id);
         if (ids.length) await client.query("DELETE FROM trash_items WHERE id = ANY($1::text[])", [ids]);
         await client.query("COMMIT");
@@ -234,10 +394,10 @@ exports.empty = async (req, res, next) => {
       } finally {
         client.release();
       }
-      if (isAdmin(req)) {
-        removeStoredFiles(items.filter(item => item.audience === "global" && item.item_type === "document")
-          .map(item => storedNameFromPayload(item.payload)));
-      }
+      removeStoredFiles([...privateStoredNames, ...(isAdmin(req)
+        ? items.filter(item => item.audience === "global" && item.item_type === "document")
+          .map(item => storedNameFromPayload(item.payload))
+        : [])]);
       return res.json({ message: "Papelera vaciada", deletedCount: items.length });
     } catch (error) {
       return next(error);
@@ -246,10 +406,11 @@ exports.empty = async (req, res, next) => {
 
   const trash = trashStore.readTrash();
   const items = trash.filter(item => canAccessTrashItem(item, req));
-  if (isAdmin(req)) {
-    removeStoredFiles(items.filter(item => item.audience === "global" && item.itemType === "document")
-      .map(item => storedNameFromPayload(item.payload)));
-  }
+  const privateStoredNames = purgePrivateJSONContent(items);
+  removeStoredFiles([...privateStoredNames, ...(isAdmin(req)
+    ? items.filter(item => item.audience === "global" && item.itemType === "document")
+      .map(item => storedNameFromPayload(item.payload))
+    : [])]);
   const itemIds = new Set(items.map(item => item.id));
   trashStore.writeTrash(trash.filter(item => !itemIds.has(item.id)));
   res.json({ message: "Papelera vaciada", deletedCount: items.length });

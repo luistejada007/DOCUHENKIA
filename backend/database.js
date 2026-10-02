@@ -65,6 +65,7 @@ async function initializeDatabase() {
         area TEXT NOT NULL DEFAULT 'Sin área',
         phone TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT 'Activo',
+        avatar_path TEXT,
         last_login_at TIMESTAMPTZ
       );
       CREATE TABLE IF NOT EXISTS folders (
@@ -88,6 +89,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path TEXT;
       ALTER TABLE folders ADD COLUMN IF NOT EXISTS owner_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
       ALTER TABLE folders ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT TRUE;
       ALTER TABLE folders ADD COLUMN IF NOT EXISTS access_roles TEXT[] NOT NULL DEFAULT ARRAY['Administrador', 'Editor', 'Revisor', 'Visualizador'];

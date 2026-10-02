@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import UserAvatar from './UserAvatar';
 
-function ProfileView({ userName, profile, onUserUpdate, onSaveMessage, onProfileChange }) {
+function ProfileView({ userName, profile, onUserUpdate, onSaveMessage, onProfileChange, onAvatarUpload }) {
   const [localProfile, setLocalProfile] = useState(profile);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     setLocalProfile(profile);
@@ -18,6 +21,23 @@ function ProfileView({ userName, profile, onUserUpdate, onSaveMessage, onProfile
     onSaveMessage('Perfil actualizado correctamente');
   };
 
+  const handleAvatarSelection = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      onSaveMessage('La foto debe pesar menos de 5 MB');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      await onAvatarUpload(file);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   return (
     <section className="profile-page">
       <div className="profile-page__header">
@@ -31,10 +51,28 @@ function ProfileView({ userName, profile, onUserUpdate, onSaveMessage, onProfile
       <div className="profile-grid">
         <div className="profile-panel">
           <div className="profile-panel__top">
-            <span className="avatar avatar-large">{localProfile.name.charAt(0).toUpperCase() || 'U'}</span>
+            <UserAvatar user={localProfile} className="avatar-large" />
             <div>
               <h2>{localProfile.name}</h2>
               <span>{localProfile.role}</span>
+              <div className="profile-photo-actions">
+                <input
+                  ref={avatarInputRef}
+                  className="visually-hidden"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleAvatarSelection}
+                  aria-label="Seleccionar foto de perfil"
+                />
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                >
+                  {isUploadingAvatar ? 'Subiendo...' : 'Actualizar foto'}
+                </button>
+              </div>
             </div>
           </div>
 

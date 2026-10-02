@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import DocumentPreview from './DocumentPreview';
 import { date, groupFor, iconFor, size } from '../utils/documents';
 
@@ -15,6 +16,7 @@ export default function DocumentWorkspace({
   onPreviewDocument,
   onDownload,
   onRemoveDocument,
+  onRemoveDocuments,
   preview,
   selectedDocument,
   isFullPreview,
@@ -22,6 +24,37 @@ export default function DocumentWorkspace({
   onOpenFullPreview,
   onShowToast,
 }) {
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState(() => new Set());
+  const visibleDocumentIds = new Set(visibleDocuments.map((document) => document.id));
+  const selectedVisibleIds = [...selectedDocumentIds].filter((id) => visibleDocumentIds.has(id));
+  const allVisibleSelected = visibleDocuments.length > 0 && selectedVisibleIds.length === visibleDocuments.length;
+
+  useEffect(() => {
+    setSelectedDocumentIds((current) => new Set([...current].filter((id) => visibleDocumentIds.has(id))));
+  }, [visibleDocuments]);
+
+  const toggleDocumentSelection = (id) => {
+    setSelectedDocumentIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleVisibleSelection = () => {
+    setSelectedDocumentIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) visibleDocuments.forEach((document) => next.delete(document.id));
+      else visibleDocuments.forEach((document) => next.add(document.id));
+      return next;
+    });
+  };
+
+  const removeSelectedDocuments = async () => {
+    if (await onRemoveDocuments(selectedVisibleIds)) setSelectedDocumentIds(new Set());
+  };
+
   return (
     <section className={`dashboard ${selectedDocument && isFullPreview ? 'preview-mode' : ''}`}>
       <div className="documents-panel">
@@ -107,12 +140,25 @@ export default function DocumentWorkspace({
           <button className="secondary-btn" onClick={onRefresh}>
             ↻ Actualizar
           </button>
+          {selectedVisibleIds.length > 0 && (
+            <button type="button" className="danger-btn" onClick={removeSelectedDocuments}>
+              Mover {selectedVisibleIds.length} a papelera
+            </button>
+          )}
         </div>
 
         <div className="table-container">
           <table>
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleVisibleSelection}
+                    aria-label="Seleccionar todos los documentos visibles"
+                  />
+                </th>
                 <th>Documento</th>
                 <th>Documentación</th>
                 <th>Tipo</th>
@@ -124,13 +170,21 @@ export default function DocumentWorkspace({
             <tbody>
               {visibleDocuments.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-row">No hay documentos para mostrar.</td>
+                  <td colSpan="7" className="empty-row">No hay documentos para mostrar.</td>
                 </tr>
               ) : (
                 visibleDocuments.map((doc) => {
                   const group = groupFor(doc);
                   return (
                     <tr key={doc.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedDocumentIds.has(doc.id)}
+                          onChange={() => toggleDocumentSelection(doc.id)}
+                          aria-label={`Seleccionar ${doc.name}`}
+                        />
+                      </td>
                       <td>
                         <div className="file-cell">
                           <span className={`file-icon ${group}`}>{iconFor(group)}</span>

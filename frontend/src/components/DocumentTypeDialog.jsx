@@ -1,4 +1,5 @@
 import { APP_ROLES } from '../utils/roles';
+import LoadingOverlay from './LoadingOverlay';
 
 export default function DocumentTypeDialog({
   files,
@@ -85,6 +86,12 @@ export default function DocumentTypeDialog({
           </button>
         </div>
       </form>
+      {isUploading && (
+        <LoadingOverlay
+          message="Subiendo documentos"
+          detail={`${uploadProgress} de ${files.length} archivos guardados`}
+        />
+      )}
     </div>
   );
 }

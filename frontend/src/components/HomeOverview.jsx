@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import UserAvatar from './UserAvatar';
 
 const emptyNewUser = {
   name: '',
@@ -128,7 +129,7 @@ export default function HomeOverview({ userName, profile, members, activity, isA
       <div className="profile-layout">
         <div className="profile-card">
           <div className="profile-header">
-            <span className="avatar avatar-large">{userName.charAt(0).toUpperCase()}</span>
+            <UserAvatar user={profile} className="avatar-large" />
             <div>
               <h2>{userName}</h2>
               <span>{profile.role}</span>
@@ -217,7 +218,7 @@ export default function HomeOverview({ userName, profile, members, activity, isA
                   <tr key={member.id}>
                     <td>
                       <div className="member-cell">
-                        <span className="avatar avatar-small">{member.name.charAt(0).toUpperCase()}</span>
+                        <UserAvatar user={member} className="avatar-small" />
                         <div>
                           <div className="member-name-row">
                             <strong>{member.name}</strong>
