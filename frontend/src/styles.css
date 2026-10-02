@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * { box-sizing: border-box; }
 
 body {
@@ -13,17 +17,14 @@ input {
 }
 
 .app {
-  min-height: 100vh;
-  display: grid;
+  @apply grid min-h-screen;
   grid-template-columns: 255px 1fr;
 }
 
 .sidebar {
   background: linear-gradient(180deg, #0d5135, #063020);
-  color: #fff;
   padding: 25px 16px;
-  display: flex;
-  flex-direction: column;
+  @apply flex flex-col text-white;
 }
 
 .brand {
@@ -62,8 +63,7 @@ input {
 }
 
 nav {
-  display: grid;
-  gap: 8px;
+  @apply grid gap-2;
 }
 
 .nav-item {
@@ -74,11 +74,7 @@ nav {
 }
 
 .nav-button {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
+  @apply w-full cursor-pointer border-0 bg-transparent text-left;
 }
 
 .nav-item:hover,
@@ -109,29 +105,7 @@ nav {
   color: #8db9a2;
 }
 
-.folder-create {
-  display: flex;
-  gap: 6px;
-  padding: 0 8px 10px;
-}
-
-.folder-create input {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 7px;
-  padding: 8px 9px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  outline: 0;
-  font-size: 12px;
-}
-
-.folder-create input::placeholder {
-  color: #a8cbbb;
-}
-
-.folder-create button,
+.folder-create-trigger,
 .folder-delete {
   border: 0;
   border-radius: 7px;
@@ -140,19 +114,53 @@ nav {
   cursor: pointer;
 }
 
-.folder-create button {
-  width: 32px;
-  font-size: 20px;
+.folder-create-trigger {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  color: #d3e6db;
+  text-align: left;
+}
+
+.upload-role-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.upload-role-options legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.upload-role-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.upload-role-options input {
+  margin: 0;
+}
+
+.upload-role-options {
+  border-color: #dfe8e2;
+  color: #53635b;
 }
 
 .folder-list {
-  display: grid;
+  @apply grid;
   gap: 3px;
 }
 
 .folder-row {
-  display: flex;
-  align-items: center;
+  @apply flex items-center;
   gap: 3px;
 }
 
@@ -437,6 +445,84 @@ main {
   font-size: 28px;
 }
 
+.member-table-tools {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.member-search {
+  display: grid;
+  gap: 6px;
+  width: min(380px, 100%);
+  color: #53675e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.member-search input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dfe8e2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #1d2b26;
+  font: inherit;
+}
+
+.member-result-count {
+  margin: 0 0 2px;
+  color: #718079;
+  font-size: 13px;
+}
+
+.member-empty {
+  padding: 28px 16px;
+  color: #718079;
+  text-align: center;
+}
+
+.member-pagination,
+.member-page-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.member-pagination {
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.member-page-list {
+  flex-wrap: wrap;
+}
+
+.member-page-control,
+.member-page-number {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid #dfe8e2;
+  border-radius: 6px;
+  background: #fff;
+  color: #284438;
+  cursor: pointer;
+}
+
+.member-page-number[aria-current="page"] {
+  border-color: #0d6f45;
+  background: #0d6f45;
+  color: #fff;
+}
+
+.member-page-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .table-container--compact {
   border-radius: 14px;
 }
@@ -457,6 +543,14 @@ main {
   color: #718079;
 }
 
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.member-name-edit:disabled { display: none; }
+
 .role-select {
   width: 100%;
   min-width: 140px;
@@ -466,6 +560,105 @@ main {
   padding: 10px 12px;
   color: #1d2b26;
 }
+
+.status-select {
+  min-width: 112px;
+  padding: 8px 10px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(9, 35, 24, 0.48);
+}
+
+.user-modal {
+  width: min(620px, 100%);
+  max-height: min(720px, 90vh);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid #dfe8e2;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(9, 35, 24, 0.24);
+}
+
+.user-modal__header,
+.user-modal__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-modal__header {
+  margin-bottom: 22px;
+}
+
+.user-modal__header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.user-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.member-edit-form { grid-template-columns: 1fr; }
+
+.document-type-summary {
+  margin: 0 0 20px;
+  color: #53635b;
+}
+
+.document-type-field {
+  display: grid;
+  gap: 7px;
+  color: #53635b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.document-type-field select {
+  width: 100%;
+  border: 1px solid #dfe8e2;
+  border-radius: 10px;
+  background: #f7faf8;
+  padding: 11px 12px;
+  color: #1d2b26;
+  font: inherit;
+}
+
+.user-form-grid label {
+  display: grid;
+  gap: 7px;
+  color: #53635b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.user-form-grid input,
+.user-form-grid select {
+  width: 100%;
+  border: 1px solid #dfe8e2;
+  border-radius: 10px;
+  background: #f7faf8;
+  padding: 11px 12px;
+  color: #1d2b26;
+}
+
+.user-modal__actions {
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.folder-delete-actions { flex-wrap: wrap; }
 
 .profile-page {
   padding: 28px;
@@ -626,6 +819,13 @@ main {
   margin: 7px 0 0;
 }
 
+.document-upload-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .primary-btn,
 .secondary-btn {
   border: 0;
@@ -649,6 +849,18 @@ main {
   color: #28553e;
   border: 1px solid #dce7e0;
 }
+
+.danger-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 17px;
+  background: #b42318;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.danger-btn:hover { background: #912018; }
 
 .small {
   padding: 9px 13px;
@@ -992,6 +1204,16 @@ th {
     flex-direction: column;
   }
 
+  .member-table-tools {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .member-search {
+    width: 100%;
+  }
+
   .preview-header {
     padding: 16px;
   }
@@ -1023,27 +1245,33 @@ th {
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  overflow: auto;
+  @apply relative isolate grid place-items-center overflow-auto p-4;
   background-color: #082b1f;
-  background-image: linear-gradient(rgba(8, 43, 31, 0.2), rgba(8, 43, 31, 0.2)), url('/fondo_henkia_02.jpg');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
   font-family: 'Ubuntu', 'Segoe UI', sans-serif;
 }
 
+.login-background {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-background { animation: none; }
+}
+
 .login-container {
+  z-index: 1;
   width: min(680px, calc(100vw - 32px));
   height: min(430px, calc(100dvh - 32px));
   min-height: 390px;
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  border-radius: 15px;
-  background: #fff;
+  @apply relative flex overflow-hidden rounded-[15px] bg-white;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
 }
 
@@ -1253,6 +1481,8 @@ th {
 }
 
 .login-error {
+  position: relative;
+  z-index: 1;
   position: fixed;
   bottom: 24px;
   left: 50%;

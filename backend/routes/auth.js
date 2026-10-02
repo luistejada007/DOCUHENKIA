@@ -1,4 +1,5 @@
 const express = require("express");
+const sessionAuth = require("../middleware/sessionAuth");
 
 const router = express.Router();
 const AUTH_API_URL = process.env.AUTH_API_URL || "https://portal-sip-lab.arus.com.co/auth-api/api/login/";
@@ -47,6 +48,17 @@ router.post("/login", async (req, res, next) => {
       });
     }
 
+    let user;
+    try {
+      user = await sessionAuth.registerSuccessfulLogin(username);
+      if (!user.loginAllowed) {
+        return res.status(403).json({ error: "Tu usuario está inactivo. Contacta al administrador." });
+      }
+      await sessionAuth.createSession(res, req, user);
+    } catch (databaseError) {
+      console.error("Error registrando el inicio de sesión:", databaseError.code || databaseError.message);
+      return res.status(500).json({ error: "No fue posible registrar tu inicio de sesión." });
+    }
     return res.status(200).json(data);
   } catch (error) {
     const errorCode = error.cause?.code || error.code;
@@ -57,6 +69,19 @@ router.post("/login", async (req, res, next) => {
       (errorCode ? `Código: ${errorCode}` : "")
     ));
   }
+});
+
+router.post("/logout", async (req, res, next) => {
+  try {
+    await sessionAuth.destroySession(req, res);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/heartbeat", sessionAuth.requireActiveUser, (req, res) => {
+  res.status(204).end();
 });
 
 module.exports = router;

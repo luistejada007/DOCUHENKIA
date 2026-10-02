@@ -1,0 +1,1 @@
+export const APP_ROLES = ['Administrador', 'Editor', 'Revisor', 'Visualizador'];

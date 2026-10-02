@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AnimatedLoginBackground from './components/AnimatedLoginBackground';
 
 const initialSignIn = { email: '', password: '' };
 const initialSignUp = { name: '', email: '', password: '' };
@@ -59,6 +60,7 @@ export default function Login({ onAuthenticated }) {
 
   return (
     <main className={`login-page ${isSignUp ? 'login-page--signup' : ''}`}>
+      <AnimatedLoginBackground />
       <section className="login-container" aria-label="Acceso a DOCUHENKIA">
         <div className="login-brand">
           <img src="/docuhenkia-logo.png" alt="Logo DOCUHENKIA" />
@@ -67,10 +69,10 @@ export default function Login({ onAuthenticated }) {
         <div className="login-form-panel">
           <form className="login-form login-form--signin" onSubmit={submitSignIn}>
             <h1>Iniciar sesión</h1>
-            <div className="login-socials" aria-label="Proveedores de acceso">
+            {/* <div className="login-socials" aria-label="Proveedores de acceso">
               <button type="button" aria-label="Iniciar sesión con Google">G</button>
               <button type="button" aria-label="Iniciar sesión con Microsoft">M</button>
-            </div>
+            </div>*/}
             <span>Usa tu usuario y contraseña</span>
             <label className="login-input">
               <span aria-hidden="true">@</span>
@@ -107,10 +109,10 @@ export default function Login({ onAuthenticated }) {
 
           <form className="login-form login-form--signup" onSubmit={submitSignUp}>
             <h1>Registrarse</h1>
-            <div className="login-socials" aria-label="Proveedores de registro">
+            {/* <div className="login-socials" aria-label="Proveedores de registro">
               <button type="button" aria-label="Registrarse con Google">G</button>
               <button type="button" aria-label="Registrarse con Microsoft">M</button>
-            </div>
+            </div> */}
             <span>Regístrate usando tu correo</span>
             <label className="login-input">
               <span aria-hidden="true">●</span>
