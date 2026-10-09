@@ -12,6 +12,7 @@ const folderRoutes = require("./routes/folders");
 const authRoutes = require("./routes/auth");
 const usersRoutes = require("./routes/users");
 const trashRoutes = require("./routes/trash");
+const settingsRoutes = require("./routes/settings");
 const sessionAuth = require("./middleware/sessionAuth");
 const { purgeExpiredTrash } = require("./trashCleanup");
 
@@ -42,6 +43,7 @@ app.use("/api/folders", sessionAuth.requireActiveUser, folderRoutes);
 app.use("/api/documents", sessionAuth.requireActiveUser, documentRoutes);
 app.use("/api/trash", sessionAuth.requireActiveUser, trashRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({

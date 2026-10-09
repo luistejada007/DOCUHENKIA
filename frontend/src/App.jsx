@@ -10,6 +10,8 @@ import DocumentWorkspace from './components/DocumentWorkspace';
 import DocumentTypeDialog from './components/DocumentTypeDialog';
 import FolderDeleteDialog from './components/FolderDeleteDialog';
 import TrashView from './components/TrashView';
+import SettingsView from './components/SettingsView';
+import AnnouncementNotification from './components/AnnouncementNotification';
 import { date, escapeHTML, groupFor, size } from './utils/documents';
 import { APP_ROLES } from './utils/roles';
 
@@ -46,6 +48,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
   const isAdmin = profile.role === 'Administrador' && profile.status === 'Activo';
   const [folders, setFolders] = useState([]);
   const [trashItems, setTrashItems] = useState([]);
+  const [settings, setSettings] = useState({ themeColor: '#146c43', announcements: [] });
   const [isTrashLoading, setIsTrashLoading] = useState(false);
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [folderAccessRoles, setFolderAccessRoles] = useState(APP_ROLES);
@@ -55,6 +58,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
   const [search, setSearch] = useState('');
   const [activeView, setActiveView] = useState('home');
   const [toast, setToast] = useState('');
+  const [liveAnnouncement, setLiveAnnouncement] = useState(null);
   const [pendingUploadFiles, setPendingUploadFiles] = useState(null);
   const [pendingUploadFolderName, setPendingUploadFolderName] = useState('');
   const [documentType, setDocumentType] = useState('');
@@ -170,6 +174,53 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
     }
   };
 
+  const loadSettings = async (notifyOnError = false) => {
+    try {
+      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.error || 'No se pudo cargar la configuración');
+      setSettings(data);
+    } catch (error) {
+      if (notifyOnError) showToast(error.message);
+    }
+  };
+
+  const saveTheme = async (themeColor) => {
+    try {
+      const response = await fetch('/api/settings/theme', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ themeColor }),
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.error || 'No se pudo guardar el color');
+      setSettings(data);
+      showToast('Color de la página actualizado para todos');
+      return true;
+    } catch (error) {
+      showToast(error.message);
+      return false;
+    }
+  };
+
+  const publishAnnouncement = async (announcement) => {
+    try {
+      const response = await fetch('/api/settings/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(announcement),
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.error || 'No se pudo publicar el anuncio');
+      setSettings(data);
+      showToast('Anuncio publicado para todos los usuarios');
+      return true;
+    } catch (error) {
+      showToast(error.message);
+      return false;
+    }
+  };
+
   const saveUser = async (payload) => {
     try {
       const response = await fetch(`${USERS_API}/${payload.id}`, {
@@ -265,7 +316,36 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
     loadDocuments();
     loadFolders();
     loadUsers();
+    loadSettings(true);
   }, [userName]);
+
+  useEffect(() => {
+    const events = new EventSource('/api/settings/events');
+    const handleAnnouncement = (event) => {
+      const announcement = JSON.parse(event.data);
+      setSettings((current) => ({
+        ...current,
+        announcements: [announcement, ...current.announcements.filter((item) => item.id !== announcement.id)],
+      }));
+      setLiveAnnouncement(announcement);
+    };
+
+    events.addEventListener('announcement', handleAnnouncement);
+    return () => {
+      events.removeEventListener('announcement', handleAnnouncement);
+      events.close();
+    };
+  }, [userName]);
+
+  useEffect(() => {
+    if (!liveAnnouncement) return undefined;
+    const timeoutId = setTimeout(() => setLiveAnnouncement(null), 10000);
+    return () => clearTimeout(timeoutId);
+  }, [liveAnnouncement]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--brand-color', settings.themeColor);
+  }, [settings.themeColor]);
 
   useEffect(() => {
     const heartbeat = async () => {
@@ -697,6 +777,16 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
       );
     }
 
+    if (activeView === 'settings' && isAdmin) {
+      return (
+        <SettingsView
+          settings={settings}
+          onSaveTheme={saveTheme}
+          onPublishAnnouncement={publishAnnouncement}
+        />
+      );
+    }
+
     if (activeView === 'trash') {
       return (
         <TrashView
@@ -740,7 +830,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
 
   return (
     <>
-      <div className="app">
+      <div className="app" style={{ '--brand-color': settings.themeColor }}>
         <Sidebar
           activeView={activeView}
           onViewChange={setActiveView}
@@ -753,6 +843,7 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
           onCreateFolder={createFolder}
           onDeleteFolder={removeFolder}
           onUploadClick={() => fileInputRef.current?.click()}
+          isAdmin={isAdmin}
           onTrashClick={() => {
             setActiveView('trash');
             loadTrash();
@@ -761,7 +852,6 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
 
         <main>
           <Topbar user={profile} userName={userName} search={search} onSearchChange={setSearch} onLogout={onLogout} />
-
           {renderMainContent()}
         </main>
       </div>
@@ -799,6 +889,12 @@ function DocumentManager({ userName, onLogout, onUserUpdate }) {
       )}
 
       {toast && <div id="toast" className="show">{toast}</div>}
+      {liveAnnouncement && (
+        <AnnouncementNotification
+          announcement={liveAnnouncement}
+          onDismiss={() => setLiveAnnouncement(null)}
+        />
+      )}
     </>
   );
 }

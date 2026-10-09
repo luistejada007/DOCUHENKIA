@@ -5,7 +5,7 @@ export default function DocumentPreview({
   onDownload,
   onClose,
   onOpenFull,
-  onShowToast,
+  onShowToast,ll
 }) {
   let content = null;
 

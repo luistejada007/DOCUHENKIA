@@ -11,6 +11,7 @@ export default function Sidebar({
   onDeleteFolder,
   onUploadClick,
   onTrashClick,
+  isAdmin,
 }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -51,9 +52,15 @@ export default function Sidebar({
         <button type="button" className="nav-item nav-button" onClick={onUploadClick}>
           ☁ <span>Subir documentos</span>
         </button>
-        <a href="#" className="nav-item" onClick={(event) => event.preventDefault()}>
-          ⚙ <span>Configuración</span>
-        </a>
+        {isAdmin && (
+          <button
+            type="button"
+            className={`nav-item nav-button ${activeView === 'settings' ? 'active' : ''}`}
+            onClick={() => onViewChange('settings')}
+          >
+            ⚙ <span>Configuración</span>
+          </button>
+        )}
         <button
           type="button"
           className={`nav-item nav-button ${activeView === 'trash' ? 'active' : ''}`}

@@ -38,12 +38,22 @@ function readSeed(fileName) {
 }
 
 async function seedIfEmpty(client, table, rows, insertRow) {
-  const { rows: existing } = await client.query(`SELECT COUNT(*)::int AS count FROM ${table}`);
-  if (existing[0].count !== 0) return;
+  const { rows: imports } = await client.query(
+    "SELECT table_name FROM data_seed_imports WHERE table_name = $1",
+    [table]
+  );
+  if (imports.length) return;
 
-  for (const row of rows) {
-    await insertRow(client, row);
+  const { rows: existing } = await client.query(`SELECT COUNT(*)::int AS count FROM ${table}`);
+  if (existing[0].count === 0) {
+    for (const row of rows) {
+      await insertRow(client, row);
+    }
   }
+  await client.query(
+    "INSERT INTO data_seed_imports (table_name) VALUES ($1) ON CONFLICT DO NOTHING",
+    [table]
+  );
 }
 
 async function initializeDatabase() {
@@ -67,6 +77,10 @@ async function initializeDatabase() {
         status TEXT NOT NULL DEFAULT 'Activo',
         avatar_path TEXT,
         last_login_at TIMESTAMPTZ
+      );
+      CREATE TABLE IF NOT EXISTS data_seed_imports (
+        table_name TEXT PRIMARY KEY,
+        imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE TABLE IF NOT EXISTS folders (
         id TEXT PRIMARY KEY,
@@ -136,6 +150,10 @@ async function initializeDatabase() {
         last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         expires_at TIMESTAMPTZ NOT NULL,
         logged_out_at TIMESTAMPTZ
+      );
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL
       );
       CREATE INDEX IF NOT EXISTS user_sessions_active_idx
         ON user_sessions (user_id, expires_at) WHERE logged_out_at IS NULL;

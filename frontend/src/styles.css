@@ -4,6 +4,8 @@
 
 * { box-sizing: border-box; }
 
+:root { --brand-color: #146c43; }
+
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -1294,6 +1296,150 @@ th {
   text-align: center;
   color: #78867f;
   padding: 35px;
+}
+
+.app {
+  --brand-strong: color-mix(in srgb, var(--brand-color), #063020 58%);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, var(--brand-strong), color-mix(in srgb, var(--brand-strong), #00190f 38%));
+}
+
+.brand-icon,
+.avatar {
+  color: var(--brand-strong);
+}
+
+.nav-item:hover,
+.nav-item.active,
+.folder-button:hover,
+.folder-button.active {
+  background: color-mix(in srgb, var(--brand-strong), white 14%);
+}
+
+.primary-btn,
+.member-page-number[aria-current="page"] {
+  border-color: var(--brand-strong);
+  background: var(--brand-strong);
+}
+
+.primary-btn:hover {
+  background: color-mix(in srgb, var(--brand-strong), black 16%);
+}
+
+.announcement-notification {
+  position: fixed;
+  z-index: 1200;
+  top: 24px;
+  right: 24px;
+  width: min(390px, calc(100vw - 32px));
+  border: 1px solid #dfe8e2;
+  border-top: 4px solid var(--brand-strong);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(13, 46, 30, 0.2);
+  animation: announcement-arrive 220ms ease-out both;
+}
+
+.announcement-notification__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand-strong);
+  font-size: 13px;
+}
+
+.announcement-notification__header span {
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--brand-color), white 88%);
+  color: var(--brand-strong);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.announcement-notification__header button {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #718079;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.announcement-notification__author { margin: 12px 0 5px; color: #53635b; font-size: 13px; }
+.announcement-notification h2 { margin: 0; color: #1d2b26; font-size: 17px; overflow-wrap: anywhere; }
+.announcement-notification__message { margin: 7px 0 0; color: #53635b; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+
+@keyframes announcement-arrive {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-page {
+  display: grid;
+  gap: 22px;
+  max-width: 1000px;
+  padding: 28px;
+}
+
+.settings-heading h1 { margin: 0; font-size: 30px; }
+.settings-heading > div > p:last-child { margin: 8px 0 0; color: #718079; }
+
+.settings-section {
+  border-top: 1px solid #dfe8e2;
+  padding-top: 20px;
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.settings-section-heading h2 { margin: 0; font-size: 18px; }
+.settings-section-heading p { margin: 5px 0 0; color: #718079; font-size: 14px; }
+
+.theme-form,
+.announcement-form {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.theme-form { grid-template-columns: auto auto 1fr auto; align-items: center; }
+.theme-picker-label,
+.announcement-form label { color: #53635b; font-size: 14px; font-weight: 600; }
+.theme-color-input { width: 48px; height: 40px; border: 1px solid #dfe8e2; border-radius: 6px; padding: 3px; background: #fff; cursor: pointer; }
+.theme-color-value { color: #718079; font-size: 13px; }
+
+.announcement-form { max-width: 680px; width: 100%; }
+.announcement-form input,
+.announcement-form textarea {
+  width: 100%;
+  border: 1px solid #dfe8e2;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #23332b;
+  background: #fff;
+}
+.announcement-form input:focus,
+.announcement-form textarea:focus { outline: 2px solid color-mix(in srgb, var(--brand-color), white 55%); border-color: var(--brand-strong); }
+.announcement-form textarea { resize: vertical; }
+.announcement-form-footer { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 14px; }
+.announcement-form-footer span { color: #718079; font-size: 13px; }
+
+@media (max-width: 720px) {
+  .announcement-notification { top: 12px; right: 16px; }
+  .settings-page { padding: 20px 14px; }
+  .theme-form { grid-template-columns: auto auto 1fr; }
+  .theme-form .primary-btn { grid-column: 1 / -1; }
 }
 
 @media (max-width: 1100px) {
